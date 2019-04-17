@@ -41,6 +41,7 @@ int main(int argc, char** argv) {
 
     //map of registers
     map<string, int> registers;
+
     //initialize all registers to 0
     for(int i = 0;i<=7;i++) {
         string reg = "$s" + i;
@@ -57,6 +58,9 @@ int main(int argc, char** argv) {
         instructions.push_back(parse_instruction(line));
     }
 
+    //main cycle loop
+    int cycle = 0;
+
     return EXIT_SUCCESS;
 }
 
@@ -69,37 +73,21 @@ Instruction* parse_instruction(const string& line) {
         i++;
     }
 
-    if(operation.compare("add") == 0) {
+    Instruction* instr;
 
-    }
-    else if(operation.compare("addi") == 0) {
+    if(operation.compare("add") == 0)       instr = new Add("add");
+    else if(operation.compare("addi") == 0) instr = new Addi("addi");
+    else if(operation.compare("and") == 0)  instr = new And("and");
+    else if(operation.compare("andi") == 0) instr = new Andi("andi");
+    else if(operation.compare("or") == 0)   instr = new Or("or");
+    else if(operation.compare("ori") == 0)  instr = new Ori("ori");
+    else if(operation.compare("slt") == 0)  instr = new Slt("slt");
+    else if(operation.compare("slti") == 0) instr = new Slti("slti");
+    else if(operation.compare("beq") == 0)  0; //wip
+    else if(operation.compare("bne") == 0)  0; //wip
+    else {}
 
-    }
-    else if(operation.compare("and") == 0) {
+    instr->setRegisters(line);
 
-    }
-    else if(operation.compare("andi") == 0) {
-
-    }
-    else if(operation.compare("or") == 0) {
-
-    }
-    else if(operation.compare("ori") == 0) {
-
-    }
-    else if(operation.compare("slt") == 0) {
-
-    }
-    else if(operation.compare("slti") == 0) {
-
-    }
-    else if(operation.compare("beq") == 0) {
-
-    }
-    else if(operation.compare("bne") == 0) {
-
-    }
-    else {
-
-    }
+    return instr;
 }
