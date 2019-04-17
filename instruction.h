@@ -11,11 +11,13 @@ Template for all operations (add, beq, etc.)
 #include <map>
 #include "register.h"
 
+#define REGISTER_MAP map<string, Register*>
+
 using namespace std;
 
 class Instruction {
 public:
-    virtual ~Instruction() = 0;
+    Instruction() {}
 
     void setType(const string& t) {type  = t;}
     const string& getType() {return type;}
@@ -23,7 +25,7 @@ public:
     /*
     @param registers: map of current global/temporary register's values
     */
-    virtual void operate(map<string, int>& registers);
+    virtual void operate(REGISTER_MAP& registers) = 0;
 
     /*
     gets registers/labels/immediates and adds to vector
@@ -39,11 +41,20 @@ public:
             }
             current++;
         }
+        this->line = line;
+    }
+
+    /* Helper temporary function for debugging*/
+    void printRegisters() {
+        for(unsigned int i = 0;i<regs.size();i++) {
+            cout << regs[i] << endl;
+        }
     }
 
 protected:
     /* Instruction type denoted by its operation (add, beq, etc.)*/
     string type;
+    string line; //actual complete instruction to be used for printing
 
     /* This instruction's registers: up to 3 (0-2)
         **immediate instructions must use stoi to parse int.

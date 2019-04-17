@@ -40,17 +40,7 @@ int main(int argc, char** argv) {
     vector<Instruction*> instructions;
 
     //map of registers
-    map<string, int> registers;
-
-    //initialize all registers to 0
-    for(int i = 0;i<=7;i++) {
-        string reg = "$s" + i;
-        registers[reg] = 0;
-    }
-    for(int i = 0;i<=9;i++) {
-        string reg = "$t" + i;
-        registers[reg] = 0;
-    }
+    map<string, Register*> registers;
 
     //parse input file
     string line;
