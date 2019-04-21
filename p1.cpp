@@ -4,11 +4,9 @@ By Aidan Lane, Tobias Park, Zach Koo, Yasmine Lu
 
 Github link: https://github.com/aidan-lane/CompOrgProject
 TODO:
- - Main cycle
- - Data Hazard
- - Forwarding
- - Control Hazard
- - Register printing
+ - Data Hazard w/out forwarding
+ - Data hazard w/ Forwarding (just don't do anything lol)
+ - Control Hazard - assume that we don't branch; as soon as the dependency variables are available, check, and if we did branch, kill the old instructions and fix things
 */
 
 #include <iostream>
@@ -25,7 +23,7 @@ TODO:
 
 using namespace std;
 
-Instruction* parse_instruction(const string& line);
+Instruction* parse_instruction(const string& line, int& offset);
 void print_registers(const REGISTER_MAP& r);
 
 void simulate(const vector<Instruction*>& instructions, REGISTER_MAP& registers, bool forward);
@@ -50,6 +48,7 @@ int main(int argc, char** argv) {
 
     //map of registers and init
     REGISTER_MAP registers;
+    registers["$zero"] = new Register(0);
     for(int i = 0;i<=7;i++) { 
         string reg = "$s" + to_string(i); 
         registers[reg] = new Register(0); 
@@ -61,9 +60,10 @@ int main(int argc, char** argv) {
 
     //parse instructions from input files
     string line;
+    int offset = 0;
     while(getline(in, line)) {
         if(line[line.size() - 1] == '\r') line.erase(line.size()-1);
-        instructions.push_back(parse_instruction(line));
+        instructions.push_back(parse_instruction(line, offset));
     }
 
     //main cycle loop
@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
 }
 
-Instruction* parse_instruction(const string& line) {
+Instruction* parse_instruction(const string& line, int& offset) {
     //parse operation; add, sub, beq, etc.
     int i = 0;
     string operation = "";
@@ -95,6 +95,9 @@ Instruction* parse_instruction(const string& line) {
     else if(operation.compare("bne") == 0)  0; //wip
     else {} //should be branch label
     
+    instr->setOffset(offset);
+    offset++;
+
     instr->setRegisters(line);
 
     return instr;
@@ -103,7 +106,7 @@ Instruction* parse_instruction(const string& line) {
 void print_registers(const REGISTER_MAP& r) {
     int line_count = 1;
     for(REGISTER_MAP::const_iterator itr = r.begin(); itr != r.end(); ++itr) {
-        if(itr->first.compare("$zero") == 0) itr++; //skip $zero
+        if(itr->first.compare("$zero") == 0) continue;
         string tmp = itr->first + " = " + to_string(itr->second->getValue());
         cout << left << setw(20) << tmp;
         if(line_count % 4 == 0) cout << "\n";
@@ -115,14 +118,35 @@ void simulate(const vector<Instruction*>& instructions, REGISTER_MAP& registers,
     cout << "START OF SIMULATION (" << (!forward ? "no " : "") << "forwarding)" << endl;
     cout << setfill('-') << setw(83);
 
-    for(unsigned int cycle = 0; cycle < 16; cycle++) {
+    for(unsigned int cycle = 0; cycle < 16 && instructions[instructions.size()-1]->getStage() < 5; cycle++) {
         cout << endl << setfill(' ') << left << setw(20) << "CPU CYCLES ===>";
+        
+        //print the numbers for the top "CPU Cycles" line
         for(int i = 1; i <= 16; i++) cout << setfill(' ') << left << setw(4) << i;
         cout << endl;
 
+        //loop through each instruction, print stages
         for(unsigned int i = 0; i <= cycle && i < instructions.size(); i++) {
-            cout << left << setw(20) << instructions[i]->getLine();
-            cout<<"TEST"<<endl;
+            cout << left << setw(20) << instructions[i]->getLine(); //print MIPS instruction
+            //each instruction contains vector with stages; add a new stage, then print stages
+            if(instructions[i]->getLastStage() == ""){ //there are no stages, just periods
+                instructions[i]->addStage("IF");
+            } 
+            else if(instructions[i]->getLastStage().compare("IF") == 0){
+                instructions[i]->addStage("ID");
+            }
+            else if(instructions[i]->getLastStage().compare("ID") == 0){
+                instructions[i]->addStage("EX");
+            }
+            else if(instructions[i]->getLastStage().compare("EX") == 0){
+                instructions[i]->addStage("MEM");
+            }
+            else if(instructions[i]->getLastStage().compare("MEM") == 0) {
+                instructions[i]->addStage("WB");
+                instructions[i]->operate(registers);
+            }
+            //if it's WB, we do nothing, so we don't even bother with an if
+            instructions[i]->printStages(); 
         }
 
         cout << endl;
