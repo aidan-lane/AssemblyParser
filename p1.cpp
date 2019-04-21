@@ -138,11 +138,13 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
         cout << endl;  
 
         //loop through each instruction, print stages
-        for(unsigned int i = 0; i <= cycle && i < instructions.size() - instructions[i]->getNop(); i++) {
+        for(unsigned int i = 0; i <= cycle && i < instructions.size(); i++) {
             cout << left << setw(20) << instructions[i]->getLine(); //print MIPS instruction
             //each instruction contains vector with stages; add a new stage, then print stages
 
             //checking the current stage based on the respective number, then adding the current stage
+            if(instructions[i]->getType().compare("nop") == 0) goto skip;
+
             if(instructions[i]->getStage() == 0) {
                 instructions[i]->addStage("IF");
                 registers[instructions[i]->getRegister(0)]->setUsed(true);
@@ -156,8 +158,8 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
 
                     vector<Instruction*>::const_iterator itr = instructions.begin() + instructions[i]->getOffset();
                     Instruction* nop = new Nop("nop");
-                    nop->setRegisters("nop");
                     instructions.insert(itr, nop);
+                    i++;
                 }
             }
             else if (instructions[i]->getStage() == 2){
@@ -171,7 +173,7 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
                 instructions[i]->operate(registers);
                 registers[instructions[i]->getRegister(0)]->setUsed(false);
             }
-
+skip:
             instructions[i]->nextStage(); //increments to next stage
             instructions[i]->printStages(); 
         }

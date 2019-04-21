@@ -21,7 +21,7 @@ protected:
 
 public:
     //constructor, initializing the values in the vector stages and setting integer stage to 0
-    Instruction() : stages(vector<string>(16, ".")), stage(0)  {
+    Instruction() : stages(vector<string>(16, ".")), stage(0), line("nop") {
         regs.push_back(""); regs.push_back(""); regs.push_back("");
     }
 
