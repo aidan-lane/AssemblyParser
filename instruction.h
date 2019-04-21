@@ -21,6 +21,7 @@ public:
 
     void setType(const string& t) {type  = t;}
     const string& getType() {return type;}
+    const string& getLine() { return line; }
 
     /*
     @param registers: map of current global/temporary register's values
@@ -32,8 +33,10 @@ public:
     @param line: instruction line to retrieve data from
     */
     void setRegisters(const string& line) {
+        regs.push_back(""); regs.push_back(""); regs.push_back("");
         int current = line.find_first_of(" ") + 1;
         int tmp = 0;
+
         while(current < (int) line.length()) {
             if(line[current] == ',') tmp++;
             else {

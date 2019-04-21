@@ -2,6 +2,9 @@
     "files.associations": {
         "xstring": "cpp",
         "unordered_map": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "ios": "cpp",
+        "iostream": "cpp",
+        "iomanip": "cpp"
     }
 }
