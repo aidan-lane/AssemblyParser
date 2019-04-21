@@ -69,4 +69,10 @@ public:
     }
 };
 
+class Nop : public Instruction {
+public:
+    Nop(const string& t) { setType(t); }
+    void operate(REGISTER_MAP& rm) {}
+};
+
 #endif

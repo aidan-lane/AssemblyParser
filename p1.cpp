@@ -23,10 +23,10 @@ TODO:
 
 using namespace std;
 
-Instruction* parse_instruction(const string& line, int& offset);
+Instruction* parse_instruction(const string& line, int& offset, map<string, int>& labels);
 void print_registers(const REGISTER_MAP& r);
 
-void simulate(const vector<Instruction*>& instructions, REGISTER_MAP& registers, bool forward);
+void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const map<string, int>& labels, bool forward);
 
 int main(int argc, char** argv) {
 
@@ -58,21 +58,24 @@ int main(int argc, char** argv) {
         registers[reg] = new Register(0); 
     }
 
+    //map of labels to offsets
+    map<string, int> labels; 
+
     //parse instructions from input files
     string line;
     int offset = 0;
     while(getline(in, line)) {
-        if(line[line.size() - 1] == '\r') line.erase(line.size()-1);
-        instructions.push_back(parse_instruction(line, offset));
+        if(line[line.size() - 1] == '\r') line.erase(line.size()-1); //fix weird C++ quirk
+        instructions.push_back(parse_instruction(line, offset, labels));
     }
 
     //main cycle loop
-    simulate(instructions, registers, forward);
+    simulate(instructions, registers, labels, forward);
 
     return EXIT_SUCCESS;
 }
 
-Instruction* parse_instruction(const string& line, int& offset) {
+Instruction* parse_instruction(const string& line, int& offset, map<string, int>& labels) {
     //parse operation; add, sub, beq, etc.
     int i = 0;
     string operation = "";
@@ -80,6 +83,8 @@ Instruction* parse_instruction(const string& line, int& offset) {
         operation += line[i];
         i++;
     }
+
+    bool is_label = false; 
 
     Instruction* instr;
 
@@ -93,12 +98,19 @@ Instruction* parse_instruction(const string& line, int& offset) {
     else if(operation.compare("slti") == 0) instr = new Slti("slti");
     else if(operation.compare("beq") == 0)  0; //wip
     else if(operation.compare("bne") == 0)  0; //wip
-    else {} //should be branch label
-    
+    else {
+        is_label = true;
+    }
+
     instr->setOffset(offset);
     offset++;
 
     instr->setRegisters(line);
+
+    if(is_label) {
+        labels[line] = offset; 
+        offset--;
+    }
 
     return instr;
 }
@@ -114,7 +126,7 @@ void print_registers(const REGISTER_MAP& r) {
     }
 }
 
-void simulate(const vector<Instruction*>& instructions, REGISTER_MAP& registers, bool forward) {
+void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const map<string, int>& labels, bool forward) {
     cout << "START OF SIMULATION (" << (!forward ? "no " : "") << "forwarding)" << endl;
     cout << setfill('-') << setw(83);
 
@@ -123,29 +135,44 @@ void simulate(const vector<Instruction*>& instructions, REGISTER_MAP& registers,
         
         //print the numbers for the top "CPU Cycles" line
         for(int i = 1; i <= 16; i++) cout << setfill(' ') << left << setw(4) << i;
-        cout << endl;
+        cout << endl;  
 
         //loop through each instruction, print stages
-        for(unsigned int i = 0; i <= cycle && i < instructions.size(); i++) {
+        for(unsigned int i = 0; i <= cycle && i < instructions.size() - instructions[i]->getNop(); i++) {
             cout << left << setw(20) << instructions[i]->getLine(); //print MIPS instruction
             //each instruction contains vector with stages; add a new stage, then print stages
-            if(instructions[i]->getLastStage() == ""){ //there are no stages, just periods
+
+            //checking the current stage based on the respective number, then adding the current stage
+            if(instructions[i]->getStage() == 0) {
                 instructions[i]->addStage("IF");
-            } 
-            else if(instructions[i]->getLastStage().compare("IF") == 0){
-                instructions[i]->addStage("ID");
+                registers[instructions[i]->getRegister(0)]->setUsed(true);
             }
-            else if(instructions[i]->getLastStage().compare("ID") == 0){
+            else if (instructions[i]->getStage() == 1){
+                instructions[i]->addStage("ID");
+
+                if(instructions[i]->isUsed(registers)) {
+                    instructions[i]->decrementStage();
+                    instructions[i]->incrementNop();
+
+                    vector<Instruction*>::const_iterator itr = instructions.begin() + instructions[i]->getOffset();
+                    Instruction* nop = new Nop("nop");
+                    nop->setRegisters("nop");
+                    instructions.insert(itr, nop);
+                }
+            }
+            else if (instructions[i]->getStage() == 2){
                 instructions[i]->addStage("EX");
             }
-            else if(instructions[i]->getLastStage().compare("EX") == 0){
+            else if (instructions[i]->getStage() == 3){
                 instructions[i]->addStage("MEM");
             }
-            else if(instructions[i]->getLastStage().compare("MEM") == 0) {
+            else if (instructions[i]->getStage() == 4){
                 instructions[i]->addStage("WB");
                 instructions[i]->operate(registers);
+                registers[instructions[i]->getRegister(0)]->setUsed(false);
             }
-            //if it's WB, we do nothing, so we don't even bother with an if
+
+            instructions[i]->nextStage(); //increments to next stage
             instructions[i]->printStages(); 
         }
 
