@@ -59,7 +59,8 @@ public:
     //print the stages for this instruction
     void printStages(){
         for(unsigned int i=0; i<stages.size(); i++){
-            cout << left << setw(4) << stages[i];
+            if(i != stages.size()-1) cout << left << setw(4) << stages[i];
+            else cout << left << stages[i];
         }
         cout << endl;
     }
@@ -107,7 +108,9 @@ public:
         if(itr == rm.end() && regs[1].compare("$zero") == 0) return make_pair(false, 0);
         if(regs[1].compare("$zero") == 0 && regs[2].compare("$zero") == 0) return make_pair(false, 0);
 
-        if(rm[regs[1]]->isUsed())
+        if(rm[regs[1]]->isUsed() && itr != rm.end() && rm[regs[2]]->isUsed())
+            return make_pair(true, offset-rm[regs[2]]->getLastUsedLine());
+        else if(rm[regs[1]]->isUsed())
             return make_pair(true, offset-rm[regs[1]]->getLastUsedLine());
         else if(itr != rm.end() && rm[regs[2]]->isUsed())
             return make_pair(true, offset-rm[regs[2]]->getLastUsedLine());

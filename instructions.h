@@ -69,10 +69,26 @@ public:
     }
 };
 
+class Beq : public Instruction {
+public:
+    Beq(const string& t) { setType(t); }
+    void operate(REGISTER_MAP& rm) {
+
+    }
+};
+
+class Bne : public Instruction {
+public:
+    Bne(const string& t) { setType(t); }
+    void operate(REGISTER_MAP& rm) {
+
+    }
+};
+
 class Nop : public Instruction {
 public:
     Nop(const string& t) { setType(t); }
-    void operate(REGISTER_MAP& rm) {}
+    void operate(REGISTER_MAP& rm) {} //has to inherit this function, no use
 };
 
 #endif

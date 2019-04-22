@@ -68,7 +68,8 @@ int main(int argc, char** argv) {
     int offset = 0;
     while(getline(in, line)) {
         if(line[line.size() - 1] == '\r') line.erase(line.size()-1); //fix weird C++ quirk
-        instructions.push_back(parse_instruction(line, offset, labels));
+        Instruction* instr = parse_instruction(line, offset, labels);
+        if(instr != nullptr) instructions.push_back(instr); //avoid adding jump labels
     }
 
     //main cycle loop
@@ -87,7 +88,6 @@ Instruction* parse_instruction(const string& line, int& offset, map<string, int>
     }
 
     bool is_label = false; 
-
     Instruction* instr;
 
     if(operation.compare("add") == 0)       instr = new Add("add");
@@ -98,21 +98,20 @@ Instruction* parse_instruction(const string& line, int& offset, map<string, int>
     else if(operation.compare("ori") == 0)  instr = new Ori("ori");
     else if(operation.compare("slt") == 0)  instr = new Slt("slt");
     else if(operation.compare("slti") == 0) instr = new Slti("slti");
-    else if(operation.compare("beq") == 0)  0; //wip
-    else if(operation.compare("bne") == 0)  0; //wip
-    else {
-        is_label = true;
+    else if(operation.compare("beq") == 0)  instr = new Beq("beq");
+    else if(operation.compare("bne") == 0)  instr = new Bne("bne");
+    else is_label = true;
+
+    if(!is_label) {
+        instr->setOffset(offset);
+        instr->setRegisters(line);
+        offset++;
     }
-
-    instr->setOffset(offset);
-    offset++;
-
-    instr->setRegisters(line);
 
     //if line is a jump label, set its location to that of instruction that appears after it
     if(is_label) {
         labels[line] = offset; 
-        offset--;
+        return nullptr;
     }
 
     return instr;
@@ -123,25 +122,34 @@ void print_registers(const REGISTER_MAP& r) {
     for(REGISTER_MAP::const_iterator itr = r.begin(); itr != r.end(); ++itr) {
         if(itr->first.compare("$zero") == 0) continue;
         string tmp = itr->first + " = " + to_string(itr->second->getValue());
-        cout << left << setw(20) << tmp;
-        if(line_count % 4 == 0) cout << "\n";
+        if(line_count % 4 == 0) cout << left << tmp << "\n";
+        else if(line_count == 18) cout << left << tmp;
+        else if(line_count % 4 != 0) cout << left << setw(20) << tmp;
         line_count++;
     }
 }
 
 void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const map<string, int>& labels, bool forward) {
     cout << "START OF SIMULATION (" << (!forward ? "no " : "") << "forwarding)" << endl;
-    cout << setfill('-') << setw(83);
+    cout << setfill('-') << setw(83) << "\n";
+    bool firstrun = true;
 
+    int nops = 0;
     for(unsigned int cycle = 0; cycle < 16 && instructions[instructions.size()-1]->getStage() < 5; cycle++) {
-        cout << endl << setfill(' ') << left << setw(20) << "CPU CYCLES ===>";
+        if(firstrun) firstrun = false;
+        else cout << endl;
+
+        cout << setfill(' ') << left << setw(20) << "CPU Cycles ===>"; 
         
         //print the numbers for the top "CPU Cycles" line
-        for(int i = 1; i <= 16; i++) cout << setfill(' ') << left << setw(4) << i;
+        for(int i = 1; i <= 16; i++){
+            if(i != 16) cout << setfill(' ') << left << setw(4) << i;
+            else cout << setfill(' ') << left << i;
+        }
         cout << endl;  
 
         //loop through each instruction, print stages
-        for(unsigned int i = 0; i <= cycle && i < instructions.size(); i++) {
+        for(unsigned int i = 0; i <= cycle + nops && i < instructions.size(); i++) {
             cout << left << setw(20) << instructions[i]->getLine(); //print MIPS instruction
 
             //skip logic on any added "nop" lines
@@ -150,9 +158,48 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
             if(instructions[i]->getStage() == 0) {
                 instructions[i]->addStage("IF");
                 registers[instructions[i]->getRegister(0)]->setUsed(true, instructions[i]->getOffset());
+
+                if(i > 0 && instructions[i-1]->isUsed(registers).first && 
+                    instructions[i-1]->isUsed(registers).second == 1) {
+                        instructions[i]->decrementStage();
+                        instructions[i]->incrementNop();
+                    }
             }
             else if (instructions[i]->getStage() == 1){
                 instructions[i]->addStage("ID");
+                
+                pair<bool,int> used = instructions[i]->isUsed(registers);
+                if(!forward && used.first && used.second == 1) {
+                    instructions[i]->decrementStage();
+                    instructions[i]->incrementNop();
+
+                    //add 2 nops
+                    if(instructions[i]->getNop() == 1) {
+                        Instruction* nop = new Nop("nop"); Instruction* nop2 = new Nop("nop");
+                        nop->setOffset(instructions[i]->getOffset()); nop2->setOffset(instructions[i]->getOffset());
+                        nop->addStage("IF"); nop2->addStage("IF"); 
+                        nop->addStage("ID"); nop2->addStage("ID");
+                        instructions.insert(instructions.begin()+instructions[i]->getOffset(), nop);
+                        instructions.insert(instructions.begin()+instructions[i]->getOffset(), nop2);
+                        i+=2;
+                        nops+=2; //handle cycle cutoff
+                    }
+                }
+                else if(!forward && used.first && used.second == 2 && 
+                    get_nops_before(instructions, instructions[i]->getOffset()) == 0) {
+                    instructions[i]->decrementStage();
+                    instructions[i]->incrementNop();
+                    
+                    if(instructions[i]->getNop() == 1) {
+                        Instruction* nop = new Nop("nop"); 
+                        nop->setOffset(instructions[i]->getOffset());
+                        nop->addStage("IF"); 
+                        nop->addStage("ID");
+                        instructions.insert(instructions.begin()+instructions[i]->getOffset(), nop);
+                        i++;
+                        nops+=1;
+                    }
+                }
             }
             else if (instructions[i]->getStage() == 2){
                 instructions[i]->addStage("EX");
@@ -166,10 +213,11 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
                 registers[instructions[i]->getRegister(0)]->setUsed(false, 0);
             }
 skip:
-            //incrementing nop stage
             if(instructions[i]->getType().compare("nop") == 0) {
-                if(instructions[i]->getStage() < 5) instructions[i]->addStage("*");
+                if(instructions[i]->getStage() < 5)
+                    instructions[i]->addStage("*");
             }
+ 
             instructions[i]->printStages(); 
         }
 
