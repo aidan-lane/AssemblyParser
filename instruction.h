@@ -21,8 +21,10 @@ protected:
 
 public:
     //constructor, initializing the values in the vector stages and setting integer stage to 0
-    Instruction() : stages(vector<string>(16, ".")), stage(0), line("nop") {
+    Instruction() : stages(vector<string>(16, ".")) {
         regs.push_back(""); regs.push_back(""); regs.push_back("");
+        stage = 0;
+        line = "nop";
     }
 
     void setType(const string& t) {type  = t;}
@@ -54,24 +56,12 @@ public:
         this->line = line;
     }
 
-    /* Helper temporary function for debugging*/
-    void printRegisters() {
-        for(unsigned int i = 0;i<regs.size();i++) {
-            cout << regs[i] << endl;
-        }
-    }
-
     //print the stages for this instruction
     void printStages(){
         for(unsigned int i=0; i<stages.size(); i++){
             cout << left << setw(4) << stages[i];
         }
         cout << endl;
-    }
-
-    //increment stage
-    void nextStage(){
-        stage++;
     }
 
     //increasing the value of nop
@@ -87,6 +77,7 @@ public:
     // add new stage to this instruction
     void addStage(string s) {
         stages[offset+stage+nops] = s;
+        stage++;
     }
 
     //returns current stage as an int
@@ -109,19 +100,22 @@ public:
         stage--;
     }
 
-    //check whether 2nd or 3rd registers are used (for data hazards)
-    bool isUsed(REGISTER_MAP& rm) {
+    /* check whether 2nd or 3rd registers are used (for data hazards) */
+    pair<bool,int> isUsed(REGISTER_MAP& rm) {
         REGISTER_MAP::iterator itr = rm.find(regs[2]); //used to check if last thing is an integer
+        
+        if(itr == rm.end() && regs[1].compare("$zero") == 0) return make_pair(false, 0);
+        if(regs[1].compare("$zero") == 0 && regs[2].compare("$zero") == 0) return make_pair(false, 0);
 
-        //returns false if the 2nd/3rd registers are 0 or if the value doesn't exist in rm
-        if(itr == rm.end()) return false; //checks if it's an integer
-        if(regs[1].compare("$zero") == 0) return false;
-        if(regs[2].compare("$zero") == 0) return false;
+        if(rm[regs[1]]->isUsed())
+            return make_pair(true, offset-rm[regs[1]]->getLastUsedLine());
+        else if(itr != rm.end() && rm[regs[2]]->isUsed())
+            return make_pair(true, offset-rm[regs[2]]->getLastUsedLine());
 
-        return rm[regs[1]]->isUsed() || rm[regs[2]]->isUsed();
+        return make_pair(false, 0);
     }
 
-    //returns whatever element in regs that is at index
+    //returns whatever element in regs that is at index (0-2)
     string getRegister(int index) {
         return regs[index];
     }
@@ -132,6 +126,7 @@ protected:
     string line; //actual complete instruction to be used for printing
     int offset; //how far away from starting from beginning (from cycle 1)
     int stage; //0-4 integer corresponding to stages (IF, ID, etc.)
+
     int nops = 0;
 
     /* This instruction's registers: up to 3 (0-2)

@@ -14,12 +14,16 @@ public:
 
     int getValue() { return value; }
     void setValue(int val) { value = val; }
-    void setUsed(bool b) { used = b; }
+    void setUsed(bool b, int line) { used = b; last = line; }
     bool isUsed() { return used; }
+
+    int getLastUsedLine() { return last; }
 
 private:
     int value; //value stored in this regster
     bool used;
+
+    int last;
 };
 
 #endif

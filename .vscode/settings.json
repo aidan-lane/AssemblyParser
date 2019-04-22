@@ -8,6 +8,7 @@
         "iomanip": "cpp",
         "vector": "cpp",
         "ostream": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "utility": "cpp"
     }
 }
