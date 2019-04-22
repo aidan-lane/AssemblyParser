@@ -165,10 +165,11 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
                         instructions[i]->incrementNop();
                     }
             }
-            else if (instructions[i]->getStage() == 1){
+            else if (instructions[i]->getStage() == 1) {
                 instructions[i]->addStage("ID");
                 
                 pair<bool,int> used = instructions[i]->isUsed(registers);
+
                 if(!forward && used.first && used.second == 1) {
                     instructions[i]->decrementStage();
                     instructions[i]->incrementNop();
@@ -189,7 +190,8 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
                     get_nops_before(instructions, instructions[i]->getOffset()) == 0) {
                     instructions[i]->decrementStage();
                     instructions[i]->incrementNop();
-                    
+
+                    //add 1 nop
                     if(instructions[i]->getNop() == 1) {
                         Instruction* nop = new Nop("nop"); 
                         nop->setOffset(instructions[i]->getOffset());

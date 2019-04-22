@@ -34,7 +34,7 @@ public:
     /*
     @param registers: map of current global/temporary register's values
     */
-    virtual void operate(REGISTER_MAP& registers) = 0;
+    virtual bool operate(REGISTER_MAP& registers) = 0;
 
     /*
     gets registers/labels/immediates and adds to vector
@@ -77,7 +77,10 @@ public:
     
     // add new stage to this instruction
     void addStage(string s) {
-        stages[offset+stage+nops] = s;
+        if (halted)
+            stages[offset+stage+nops] = "*";
+        else
+            stages[offset+stage+nops] = s;
         stage++;
     }
 
@@ -131,6 +134,7 @@ protected:
     int stage; //0-4 integer corresponding to stages (IF, ID, etc.)
 
     int nops = 0;
+    bool halted = false; //will be true if this instruction was halted after a branch
 
     /* This instruction's registers: up to 3 (0-2)
         **immediate instructions must use stoi to parse int.
