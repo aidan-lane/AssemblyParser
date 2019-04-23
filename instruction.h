@@ -83,6 +83,16 @@ public:
             stages[offset+stage+nops] = s;
         stage++;
     }
+    
+    //sets halted to h
+    void setHalted(bool h){
+        halted = h; 
+    }
+
+    //returns halted
+    bool getHalted(){
+        return halted;
+    }
 
     //returns current stage as an int
     int getStage(){
@@ -104,7 +114,7 @@ public:
         stage--;
     }
 
-    /* check whether 2nd or 3rd registers are used (for data hazards) */
+     /* check whether 2nd or 3rd registers are used (for data hazards) */
     pair<bool,int> isUsed(REGISTER_MAP& rm) {
         REGISTER_MAP::iterator itr = rm.find(regs[2]); //used to check if last thing is an integer
         

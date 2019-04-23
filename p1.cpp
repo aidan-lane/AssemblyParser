@@ -26,7 +26,7 @@ using namespace std;
 Instruction* parse_instruction(const string& line, int& offset, map<string, int>& labels);
 void print_registers(const REGISTER_MAP& r);
 
-void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const map<string, int>& labels, bool forward);
+void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, map<string, int>& labels, bool forward);
 
 int get_nops_before(vector<Instruction*>& instructions, int index);
 
@@ -129,7 +129,7 @@ void print_registers(const REGISTER_MAP& r) {
     }
 }
 
-void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const map<string, int>& labels, bool forward) {
+void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, map<string, int>& labels, bool forward) {
     cout << "START OF SIMULATION (" << (!forward ? "no " : "") << "forwarding)" << endl;
     cout << setfill('-') << setw(83) << "\n";
     bool firstrun = true;
@@ -163,7 +163,12 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
                     instructions[i-1]->isUsed(registers).second == 1) {
                         instructions[i]->decrementStage();
                         instructions[i]->incrementNop();
-                    }
+                }
+                else if(i > 0 && instructions[i-1]->isUsed(registers).first &&
+                        get_nops_before(instructions, instructions[i]->getOffset()) == 1) {
+                    instructions[i]->decrementStage();
+                    instructions[i]->incrementNop();
+                }
             }
             else if (instructions[i]->getStage() == 1) {
                 instructions[i]->addStage("ID");
@@ -211,9 +216,32 @@ void simulate(vector<Instruction*>& instructions, REGISTER_MAP& registers, const
             }
             else if (instructions[i]->getStage() == 4){
                 instructions[i]->addStage("WB");
-                instructions[i]->operate(registers);
+                bool branch = false;
+                if (!instructions[i]->getHalted())
+                    branch = instructions[i]->operate(registers);
+
                 registers[instructions[i]->getRegister(0)]->setUsed(false, 0);
+                
+                // if the instruction is a branch
+                if (branch) {
+                    string label = instructions[i]->getRegister(2) + ":";
+                    int branch_offset = labels[label];
+                    string branch_line = instructions[i]->getLine();
+                    vector<Instruction*>::const_iterator itr = instructions.begin() + instructions[i]->getOffset() + 4;
+
+                    for (int j = 0; j < 3; j++){
+                        instructions[j + instructions[i]->getOffset() + 1]->setHalted(true); 
+                    }
+                    
+                    int combined_offset = branch_offset + instructions[i]->getOffset() + 3;
+                    for(int j = branch_offset;j<instructions[i]->getOffset() + 4;j++) {
+                        Instruction* new_instr = parse_instruction(instructions[j]->getLine(), combined_offset, labels);
+                        itr = instructions.insert(itr, new_instr);
+                        itr++;
+                    }
+                }
             }
+
 skip:
             if(instructions[i]->getType().compare("nop") == 0) {
                 if(instructions[i]->getStage() < 5)

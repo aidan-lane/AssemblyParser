@@ -9,6 +9,7 @@
         "vector": "cpp",
         "ostream": "cpp",
         "string": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "xtree": "cpp"
     }
 }
